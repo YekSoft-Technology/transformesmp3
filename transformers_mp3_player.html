@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformers MP3 Çalar</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', monospace;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            z-index: -1;
+        }
+
+        .player-container {
+            position: relative;
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border-radius: 25px;
+            padding: 30px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                0 0 50px rgba(83, 52, 131, 0.3);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            max-width: 450px;
+            width: 90%;
+            animation: containerGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes containerGlow {
+            0% { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 50px rgba(83, 52, 131, 0.3); }
+            100% { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 80px rgba(83, 52, 131, 0.5); }
+        }
+
+        .player-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .player-title {
+            font-size: 24px;
+            font-weight: 900;
+            color: #00ffff;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            margin-bottom: 10px;
+            animation: titlePulse 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes titlePulse {
+            0% { text-shadow: 0 0 20px rgba(0, 255, 255, 0.5); }
+            100% { text-shadow: 0 0 30px rgba(0, 255, 255, 0.8); }
+        }
+
+        .visualizer {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 60px;
+            margin-bottom: 30px;
+            gap: 3px;
+        }
+
+        .bar {
+            width: 4px;
+            background: linear-gradient(to top, #ff6b6b, #4ecdc4, #45b7d1);
+            border-radius: 2px;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .bar:nth-child(odd) {
+            animation-delay: -0.5s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { height: 10px; }
+            50% { height: 50px; }
+        }
+
+        .track-info {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .track-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 5px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .track-artist {
+            font-size: 14px;
+            color: #b0b0b0;
+            animation: slideIn 0.5s ease-out 0.2s both;
+        }
+
+        @keyframes slideIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-container {
+            margin-bottom: 25px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: progressGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes progressGlow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .control-btn {
+            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+            border: none;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .control-btn:active {
+            transform: translateY(1px);
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+            transition: all 0.3s ease;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .control-btn:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .play-btn {
+            background: linear-gradient(145deg, #4ecdc4, #45b7d1);
+            font-size: 24px;
+            padding: 18px 22px;
+            animation: playBtnGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes playBtnGlow {
+            0% { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(78, 205, 196, 0.3); }
+            100% { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 0 30px rgba(78, 205, 196, 0.6); }
+        }
+
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .volume-icon {
+            color: #ffffff;
+            font-size: 18px;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(145deg, #4ecdc4, #45b7d1);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-input-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: block;
+            background: linear-gradient(145deg, #2a2a3e, #1a1a2e);
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            font-size: 14px;
+        }
+
+        .file-input-label:hover {
+            background: linear-gradient(145deg, #3a3a4e, #2a2a3e);
+            border-color: #4ecdc4;
+            transform: translateY(-2px);
+        }
+
+        .playlist {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .playlist-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .playlist-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .playlist-item.active {
+            background: linear-gradient(90deg, rgba(78, 205, 196, 0.3), rgba(69, 183, 209, 0.3));
+            color: #4ecdc4;
+        }
+
+        .playlist::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .playlist::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .playlist::-webkit-scrollbar-thumb {
+            background: linear-gradient(145deg, #4ecdc4, #45b7d1);
+            border-radius: 3px;
+        }
+
+        .energy-orb {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: orbPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes orbPulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
+
+        .matrix-line {
+            position: absolute;
+            width: 1px;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, #00ff00, transparent);
+            animation: matrixFall 3s linear infinite;
+        }
+
+        @keyframes matrixFall {
+            0% { transform: translateY(-100px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(calc(100vh + 100px)); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg" id="matrixBg"></div>
+    
+    <div class="player-container">
+        <div class="energy-orb"></div>
+        
+        <div class="player-header">
+            <div class="player-title">TRANSFORMERS MP3</div>
+        </div>
+
+        <div class="visualizer" id="visualizer"></div>
+
+        <div class="track-info">
+            <div class="track-title" id="trackTitle">Müzik Seçin</div>
+            <div class="track-artist" id="trackArtist">Transformers Player</div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="time-display">
+                <span id="currentTime">0:00</span>
+                <span id="totalTime">0:00</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" id="prevBtn">⏮</button>
+            <button class="control-btn play-btn" id="playBtn">▶</button>
+            <button class="control-btn" id="nextBtn">⏭</button>
+            <button class="control-btn" id="shuffleBtn">🔀</button>
+            <button class="control-btn" id="repeatBtn">🔁</button>
+        </div>
+
+        <div class="volume-container">
+            <span class="volume-icon">🔊</span>
+            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="50">
+        </div>
+
+        <div class="file-input-container">
+            <input type="file" class="file-input" id="fileInput" accept="audio/*" multiple>
+            <label for="fileInput" class="file-input-label">
+                🎵 Müzik Dosyası Seç
+            </label>
+        </div>
+
+        <div class="playlist" id="playlist"></div>
+    </div>
+
+    <audio id="audioPlayer" preload="metadata"></audio>
+
+    <script>
+        class TransformersPlayer {
+            constructor() {
+                this.audio = document.getElementById('audioPlayer');
+                this.playlist = [];
+                this.currentIndex = 0;
+                this.isPlaying = false;
+                this.isShuffled = false;
+                this.isRepeating = false;
+                
+                this.initializeElements();
+                this.initializeEventListeners();
+                this.createVisualizer();
+                this.createMatrixBackground();
+            }
+
+            initializeElements() {
+                this.playBtn = document.getElementById('playBtn');
+                this.prevBtn = document.getElementById('prevBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                this.shuffleBtn = document.getElementById('shuffleBtn');
+                this.repeatBtn = document.getElementById('repeatBtn');
+                this.progressBar = document.getElementById('progressBar');
+                this.progressFill = document.getElementById('progressFill');
+                this.currentTime = document.getElementById('currentTime');
+                this.totalTime = document.getElementById('totalTime');
+                this.trackTitle = document.getElementById('trackTitle');
+                this.trackArtist = document.getElementById('trackArtist');
+                this.volumeSlider = document.getElementById('volumeSlider');
+                this.fileInput = document.getElementById('fileInput');
+                this.playlistEl = document.getElementById('playlist');
+                this.visualizer = document.getElementById('visualizer');
+            }
+
+            initializeEventListeners() {
+                this.playBtn.addEventListener('click', () => this.togglePlay());
+                this.prevBtn.addEventListener('click', () => this.previousTrack());
+                this.nextBtn.addEventListener('click', () => this.nextTrack());
+                this.shuffleBtn.addEventListener('click', () => this.toggleShuffle());
+                this.repeatBtn.addEventListener('click', () => this.toggleRepeat());
+                
+                this.progressBar.addEventListener('click', (e) => this.seekTo(e));
+                this.volumeSlider.addEventListener('input', (e) => this.setVolume(e.target.value));
+                this.fileInput.addEventListener('change', (e) => this.loadFiles(e.target.files));
+                
+                this.audio.addEventListener('loadedmetadata', () => this.updateTrackInfo());
+                this.audio.addEventListener('timeupdate', () => this.updateProgress());
+                this.audio.addEventListener('ended', () => this.handleTrackEnd());
+            }
+
+            createVisualizer() {
+                for (let i = 0; i < 20; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    bar.style.animationDelay = `${i * 0.1}s`;
+                    this.visualizer.appendChild(bar);
+                }
+            }
+
+            createMatrixBackground() {
+                const matrixBg = document.getElementById('matrixBg');
+                
+                setInterval(() => {
+                    const line = document.createElement('div');
+                    line.className = 'matrix-line';
+                    line.style.left = Math.random() * 100 + '%';
+                    line.style.animationDelay = Math.random() * 2 + 's';
+                    matrixBg.appendChild(line);
+                    
+                    setTimeout(() => {
+                        line.remove();
+                    }, 3000);
+                }, 200);
+            }
+
+            loadFiles(files) {
+                this.playlist = [];
+                Array.from(files).forEach((file, index) => {
+                    const url = URL.createObjectURL(file);
+                    this.playlist.push({
+                        name: file.name.replace(/\.[^/.]+$/, ""),
+                        url: url,
+                        file: file
+                    });
+                });
+                
+                this.renderPlaylist();
+                if (this.playlist.length > 0) {
+                    this.loadTrack(0);
+                }
+            }
+
+            renderPlaylist() {
+                this.playlistEl.innerHTML = '';
+                this.playlist.forEach((track, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'playlist-item';
+                    item.textContent = track.name;
+                    item.addEventListener('click', () => this.loadTrack(index));
+                    this.playlistEl.appendChild(item);
+                });
+            }
+
+            loadTrack(index) {
+                if (index >= 0 && index < this.playlist.length) {
+                    this.currentIndex = index;
+                    this.audio.src = this.playlist[index].url;
+                    this.updatePlaylistHighlight();
+                    this.audio.load();
+                }
+            }
+
+            updatePlaylistHighlight() {
+                const items = this.playlistEl.querySelectorAll('.playlist-item');
+                items.forEach((item, index) => {
+                    item.classList.toggle('active', index === this.currentIndex);
+                });
+            }
+
+            togglePlay() {
+                if (this.playlist.length === 0) return;
+                
+                if (this.isPlaying) {
+                    this.audio.pause();
+                    this.playBtn.textContent = '▶';
+                    this.isPlaying = false;
+                } else {
+                    this.audio.play();
+                    this.playBtn.textContent = '⏸';
+                    this.isPlaying = true;
+                }
+            }
+
+            previousTrack() {
+                if (this.playlist.length === 0) return;
+                
+                const prevIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.playlist.length - 1;
+                this.loadTrack(prevIndex);
+                if (this.isPlaying) {
+                    this.audio.play();
+                }
+            }
+
+            nextTrack() {
+                if (this.playlist.length === 0) return;
+                
+                let nextIndex;
+                if (this.isShuffled) {
+                    nextIndex = Math.floor(Math.random() * this.playlist.length);
+                } else {
+                    nextIndex = this.currentIndex < this.playlist.length - 1 ? this.currentIndex + 1 : 0;
+                }
+                
+                this.loadTrack(nextIndex);
+                if (this.isPlaying) {
+                    this.audio.play();
+                }
+            }
+
+            toggleShuffle() {
+                this.isShuffled = !this.isShuffled;
+                this.shuffleBtn.style.color = this.isShuffled ? '#4ecdc4' : '#ffffff';
+            }
+
+            toggleRepeat() {
+                this.isRepeating = !this.isRepeating;
+                this.repeatBtn.style.color = this.isRepeating ? '#4ecdc4' : '#ffffff';
+            }
+
+            seekTo(e) {
+                const rect = this.progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                this.audio.currentTime = percent * this.audio.duration;
+            }
+
+            setVolume(value) {
+                this.audio.volume = value / 100;
+            }
+
+            updateTrackInfo() {
+                if (this.playlist.length > 0) {
+                    this.trackTitle.textContent = this.playlist[this.currentIndex].name;
+                    this.trackArtist.textContent = `Track ${this.currentIndex + 1} of ${this.playlist.length}`;
+                    this.totalTime.textContent = this.formatTime(this.audio.duration);
+                }
+            }
+
+            updateProgress() {
+                if (this.audio.duration) {
+                    const progress = (this.audio.currentTime / this.audio.duration) * 100;
+                    this.progressFill.style.width = progress + '%';
+                    this.currentTime.textContent = this.formatTime(this.audio.currentTime);
+                }
+            }
+
+            handleTrackEnd() {
+                if (this.isRepeating) {
+                    this.audio.currentTime = 0;
+                    this.audio.play();
+                } else {
+                    this.nextTrack();
+                }
+            }
+
+            formatTime(seconds) {
+                if (isNaN(seconds)) return '0:00';
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Player'ı başlat
+        const player = new TransformersPlayer();
+        
+        // Ses seviyesini ayarla
+        player.audio.volume = 0.5;
+    </script>
+</body>
+</html>
